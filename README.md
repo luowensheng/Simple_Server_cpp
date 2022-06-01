@@ -18,8 +18,8 @@ int main()
 		rw.SetContent("About");
      });
 
-	app.Get("/feed", [](ResponseWriter& rw, RequestDetails& r) {
-		rw.SetContent(
+	app.Get("/counter", []() {
+		return (
 			"<html>"
 			"<body>"
 			"<h1>Hello World</h1>"
