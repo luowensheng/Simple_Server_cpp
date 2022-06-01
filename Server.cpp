@@ -1,5 +1,5 @@
 #include "Server.h"
-
+#include <future>
 
 namespace SimpleServer{
 
@@ -19,22 +19,12 @@ namespace SimpleServer{
 				
 		Socket serverSocket(AF_INET);
 		serverSocket.Bind(port);
-		serverSocket.Listen([]() {std::cout << "Server is listening\n"; });
+		serverSocket.Listen([&]() {std::cout << "Server is listening on "<< "http://localhost:"<< port <<" \n"; });
 		do {
 			Socket* clientsocket = serverSocket.Accept();
 			std::cout << "Received client" << "\n";
 			//clientsocket->PrintInfo();
-			try
-			{
-				this->HandleConnection(*clientsocket);
-			}
-			catch (const std::exception&)
-			{
-				clientsocket->Close();
-				//serverSocket.Close();
-			}
-			clientsocket->Close();
-			//serverSocket.Close();
+			std::async(std::launch::async, [this, &clientsocket]() {this->HandleConnection(*clientsocket); });
 
 		} while (true);
 
@@ -42,17 +32,24 @@ namespace SimpleServer{
 	}
 
 	void Server::HandleConnection(Socket& clientsocket) {
-		
-		std::string msg = clientsocket.Read();
-		std::cout << msg << std::endl;
+		try
+		{
+			std::string msg = clientsocket.Read();
+			std::cout << msg << std::endl;
 
-		if (msg=="") 
-			throw std::exception("Either client sent nothing or parsing failed\n");
-		
-		RequestDetails request(msg);
-		ResponseWriter responseWriter;
-		this->ProcessRequest(responseWriter, request);
-		clientsocket.SendAll(responseWriter.GetResponse(), responseWriter.GetContentLength());
+			if (msg == "")
+				throw std::exception("Either client sent nothing or parsing failed\n");
+
+			RequestDetails request(msg);
+			ResponseWriter responseWriter;
+			this->ProcessRequest(responseWriter, request);
+			clientsocket.SendAll(responseWriter.GetResponse(), responseWriter.GetContentLength());
+		}
+		catch (const std::exception&)
+		{
+				
+		}
+		clientsocket.Close();
 
     }
 
